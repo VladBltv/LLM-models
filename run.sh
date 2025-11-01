@@ -22,11 +22,19 @@ elif [ -f "$SCRIPT_DIR/app_tlite.py" ]; then
     PROJECT_DIR="$SCRIPT_DIR"
 else
     # Создаём workspace если нет
+    echo "📁 Создание директории workspace..."
     mkdir -p "$SCRIPT_DIR/workspace"
     PROJECT_DIR="$SCRIPT_DIR/workspace"
 fi
 
 echo "📂 Рабочая директория: $PROJECT_DIR"
+
+# Проверяем что директория существует
+if [ ! -d "$PROJECT_DIR" ]; then
+    echo "❌ Не удалось создать/найти рабочую директорию"
+    exit 1
+fi
+
 cd "$PROJECT_DIR" || exit 1
 
 # Проверяем есть ли файлы проекта
@@ -42,9 +50,17 @@ if [ ! -f "app_tlite.py" ]; then
         # Клонируем во временную папку, потом переносим файлы
         TMP_DIR=$(mktemp -d)
         if git clone "$GIT_REPO" "$TMP_DIR" 2>&1; then
-            # Копируем все файлы в текущую директорию
-            cp -r "$TMP_DIR"/* "$PROJECT_DIR/" 2>/dev/null
-            cp -r "$TMP_DIR"/.* "$PROJECT_DIR/" 2>/dev/null
+            # Копируем файлы только если их нет
+            echo "📋 Копирование файлов проекта..."
+            for file in "$TMP_DIR"/*; do
+                filename=$(basename "$file")
+                if [ ! -e "$PROJECT_DIR/$filename" ]; then
+                    cp -r "$file" "$PROJECT_DIR/" 2>/dev/null
+                else
+                    echo "   ⏩ Пропуск $filename (уже существует)"
+                fi
+            done
+            
             rm -rf "$TMP_DIR"
             echo "✅ Репозиторий склонирован!"
             echo ""
@@ -137,9 +153,12 @@ mkdir -p /tmp/llm_logs
 LOG_FILE="/tmp/llm_logs/${MODEL}.log"
 > "$LOG_FILE"  # Очищаем старый лог
 
+# Отключаем hf_transfer если не установлен
+export HF_HUB_ENABLE_HF_TRANSFER=0
+
 # Запускаем через tmux с логированием (без буферизации Python)
 echo "🔧 Команда: python -u $SCRIPT"
-tmux new -s model -d "cd $PROJECT_DIR && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
+tmux new -s model -d "cd $PROJECT_DIR && export HF_HUB_ENABLE_HF_TRANSFER=0 && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
 sleep 3
 
 # Проверяем что tmux сессия запустилась
