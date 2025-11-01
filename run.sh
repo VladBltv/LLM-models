@@ -204,17 +204,63 @@ echo "✅ Модель готова!"
 
 # Запускаем туннель в фоне
 echo "🌐 Создание URL..."
-tmux new -s tunnel -d "cloudflared tunnel --url http://localhost:$PORT"
-sleep 3
+mkdir -p /tmp/llm_logs
+tmux new -s tunnel -d "cloudflared tunnel --url http://localhost:$PORT 2>&1 | tee /tmp/llm_logs/${MODEL}-tunnel.log"
 
-# Получаем и выводим URL
-URL=$(tmux capture-pane -t tunnel -p | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | head -1)
+# Ждём URL (до 60 секунд)
+echo "⏳ Ожидание Cloudflare туннеля..."
+URL=""
+COUNTER=0
+while [ -z "$URL" ] && [ $COUNTER -lt 30 ]; do
+    sleep 2
+    # Пробуем получить из tmux
+    URL=$(tmux capture-pane -t tunnel -p 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1)
+    
+    # Если не получилось, пробуем из лог-файла
+    if [ -z "$URL" ] && [ -f "/tmp/llm_logs/${MODEL}-tunnel.log" ]; then
+        URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/llm_logs/${MODEL}-tunnel.log | head -1)
+    fi
+    
+    if [ -z "$URL" ]; then
+        echo -n "."
+    fi
+    COUNTER=$((COUNTER + 1))
+done
+echo ""
+
+if [ -z "$URL" ]; then
+    echo ""
+    echo "⚠️  Не удалось автоматически получить URL"
+    echo "💡 Проверь логи: cat /tmp/llm_logs/${MODEL}-tunnel.log | grep https"
+    echo "💡 Или: tmux attach -t tunnel"
+    echo ""
+    # Не выходим, чтобы показать что сервер работает
+fi
+
 echo ""
 echo "================================"
 echo "✅ $NAME ГОТОВ!"
 echo "================================"
-echo "🌐 Swagger UI:"
-echo "   $URL/docs"
+
+if [ -n "$URL" ]; then
+    echo "🌐 Публичный URL:"
+    echo "   $URL"
+    echo ""
+    echo "📝 Swagger UI:"
+    echo "   $URL/docs"
+else
+    echo "🌐 Локальный URL:"
+    echo "   http://localhost:$PORT/docs"
+    echo ""
+    echo "💡 Для публичного URL проверь:"
+    echo "   cat /tmp/llm_logs/${MODEL}-tunnel.log | grep https"
+fi
+
 echo "================================"
+echo ""
+echo "💡 Полезные команды:"
+echo "   • Остановить:        bash /workspace/stop.sh"
+echo "   • Посмотреть логи:   tmux attach -t model"
+echo "   • Получить URL:      cat /tmp/llm_logs/${MODEL}-tunnel.log | grep https"
 echo ""
 
