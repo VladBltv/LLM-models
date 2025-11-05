@@ -11,15 +11,34 @@ MODEL_NAME = "yandex/YandexGPT-5-Lite-8B-instruct"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
 # Получаем параметры из переменных окружения или используем значения по умолчанию
-gpu_memory_util = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.9"))
-max_model_length = int(os.environ.get("MAX_MODEL_LEN", "16384"))
+gpu_memory_util = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.75"))
+max_model_length = int(os.environ.get("MAX_MODEL_LEN", "4096"))  # Сильно уменьшено для экономии памяти
 
-llm = LLM(
-    model=MODEL_NAME,
-    tensor_parallel_size=1,
-    gpu_memory_utilization=gpu_memory_util,
-    max_model_len=max_model_length,  # Ограничиваем длину контекста для экономии памяти KV cache
-)
+print(f"🔧 Параметры загрузки модели:")
+print(f"   GPU Memory Utilization: {gpu_memory_util}")
+print(f"   Max Model Length: {max_model_length}")
+
+try:
+    llm = LLM(
+        model=MODEL_NAME,
+        tensor_parallel_size=1,
+        gpu_memory_utilization=gpu_memory_util,
+        max_model_len=max_model_length,  # Ограничиваем длину контекста для экономии памяти KV cache
+        enforce_eager=False,  # Используем оптимизированный режим
+    )
+except ValueError as e:
+    if "max seq len" in str(e).lower() or "kv cache" in str(e).lower():
+        print(f"⚠️  Ошибка с max_model_len={max_model_length}, пробую уменьшить до 2048...")
+        max_model_length = 2048
+        llm = LLM(
+            model=MODEL_NAME,
+            tensor_parallel_size=1,
+            gpu_memory_utilization=0.7,  # Еще меньше
+            max_model_len=2048,
+            enforce_eager=False,
+        )
+    else:
+        raise
 
 app = FastAPI(title="YandexGPT-8B-Lite-Instruct service")
 

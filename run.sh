@@ -156,9 +156,22 @@ LOG_FILE="/tmp/llm_logs/${MODEL}.log"
 # Отключаем hf_transfer если не установлен
 export HF_HUB_ENABLE_HF_TRANSFER=0
 
+# Устанавливаем параметры для моделей с большим контекстом
+if [ "$MODEL" = "yagpt" ]; then
+    export MAX_MODEL_LEN=${MAX_MODEL_LEN:-4096}
+    export GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.75}
+    echo "🔧 Параметры для YandexGPT:"
+    echo "   MAX_MODEL_LEN=$MAX_MODEL_LEN"
+    echo "   GPU_MEMORY_UTILIZATION=$GPU_MEMORY_UTILIZATION"
+fi
+
 # Запускаем через tmux с логированием (без буферизации Python)
 echo "🔧 Команда: HOST=0.0.0.0 PORT=$PORT python -u $SCRIPT"
-tmux new -s model -d "cd $PROJECT_DIR && export HF_HUB_ENABLE_HF_TRANSFER=0 && export HOST=0.0.0.0 && export PORT=$PORT && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
+ENV_VARS="export HF_HUB_ENABLE_HF_TRANSFER=0 && export HOST=0.0.0.0 && export PORT=$PORT"
+if [ "$MODEL" = "yagpt" ]; then
+    ENV_VARS="$ENV_VARS && export MAX_MODEL_LEN=$MAX_MODEL_LEN && export GPU_MEMORY_UTILIZATION=$GPU_MEMORY_UTILIZATION"
+fi
+tmux new -s model -d "cd $PROJECT_DIR && $ENV_VARS && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
 sleep 3
 
 # Проверяем что tmux сессия запустилась
