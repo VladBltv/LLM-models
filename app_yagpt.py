@@ -10,10 +10,15 @@ MODEL_NAME = "yandex/YandexGPT-5-Lite-8B-instruct"
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
+# Получаем параметры из переменных окружения или используем значения по умолчанию
+gpu_memory_util = float(os.environ.get("GPU_MEMORY_UTILIZATION", "0.9"))
+max_model_length = int(os.environ.get("MAX_MODEL_LEN", "16384"))
+
 llm = LLM(
     model=MODEL_NAME,
     tensor_parallel_size=1,
-    gpu_memory_utilization=0.9, 
+    gpu_memory_utilization=gpu_memory_util,
+    max_model_len=max_model_length,  # Ограничиваем длину контекста для экономии памяти KV cache
 )
 
 app = FastAPI(title="YandexGPT-8B-Lite-Instruct service")
