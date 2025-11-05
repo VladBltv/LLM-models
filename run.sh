@@ -237,8 +237,41 @@ fi
 
 # Запускаем туннель в фоне
 echo "🌐 Создание URL..."
+
+# Проверяем что сервер действительно доступен на нужном порту
+echo "🔍 Проверка доступности сервера на порту $PORT..."
+if curl -s --max-time 2 http://localhost:$PORT/docs >/dev/null 2>&1; then
+    echo "✅ Сервер доступен на порту $PORT"
+    
+    # Проверяем что это действительно наш FastAPI сервер
+    RESPONSE=$(curl -s --max-time 2 http://localhost:$PORT/docs 2>/dev/null)
+    if echo "$RESPONSE" | grep -q "swagger\|fastapi\|openapi" 2>/dev/null; then
+        echo "✅ Подтверждено: это FastAPI сервер"
+    else
+        echo "⚠️  Внимание: ответ на /docs не похож на FastAPI Swagger UI"
+        echo "   Возможно, на порту $PORT запущен другой сервис"
+    fi
+else
+    echo "⚠️  Сервер не отвечает на порту $PORT"
+    echo "💡 Проверь что модель запущена: tmux attach -t model"
+    echo "💡 Или проверь логи: cat $LOG_FILE"
+    echo ""
+    
+    # Проверяем что порт занят каким-то процессом
+    if command -v lsof &>/dev/null; then
+        PORT_PROCESS=$(lsof -i :$PORT 2>/dev/null | tail -n +2)
+        if [ -n "$PORT_PROCESS" ]; then
+            echo "ℹ️  На порту $PORT запущен процесс:"
+            echo "   $PORT_PROCESS"
+        fi
+    fi
+    
+    echo "⚠️  Запускаю туннель, но сервер может быть не готов"
+fi
+
 mkdir -p /tmp/llm_logs
-tmux new -s tunnel -d "cloudflared tunnel --url http://localhost:$PORT 2>&1 | tee /tmp/llm_logs/${MODEL}-tunnel.log"
+echo "🔗 Создание туннеля для http://localhost:$PORT"
+tmux new -s tunnel -d "cloudflared tunnel --url http://127.0.0.1:$PORT 2>&1 | tee /tmp/llm_logs/${MODEL}-tunnel.log"
 
 # Ждём URL (до 60 секунд)
 echo "⏳ Ожидание Cloudflare туннеля..."
@@ -280,6 +313,17 @@ if [ -z "$URL" ]; then
     echo "💡 Или: tmux attach -t tunnel"
     echo ""
     # Не выходим, чтобы показать что сервер работает
+else
+    # Проверяем что URL действительно ведет на наш сервис
+    echo ""
+    echo "🔍 Проверка доступности через туннель..."
+    if curl -s --max-time 10 "$URL/docs" >/dev/null 2>&1; then
+        echo "✅ Туннель работает корректно!"
+    else
+        echo "⚠️  Туннель создан, но не отвечает на /docs"
+        echo "💡 Проверь что сервер запущен на порту $PORT"
+        echo "💡 Локальная проверка: curl http://localhost:$PORT/docs"
+    fi
 fi
 
 echo ""
@@ -291,8 +335,26 @@ if [ -n "$URL" ]; then
     echo "🌐 Публичный URL:"
     echo "   $URL"
     echo ""
-    echo "📝 Swagger UI:"
+    echo "📝 Swagger UI (API документация):"
     echo "   $URL/docs"
+    echo ""
+    echo "🔧 API эндпоинт:"
+    case $MODEL in
+        yagpt)
+            echo "   POST $URL/generate_yagpt"
+            ;;
+        vikhr)
+            echo "   POST $URL/generate_vikhr"
+            ;;
+        tlite)
+            echo "   POST $URL/generate_tlite"
+            ;;
+    esac
+    echo ""
+    echo "⚠️  Важно: Если открывается страница RunPod вместо Swagger UI,"
+    echo "   проверь что туннель проксирует порт $PORT:"
+    echo "   tmux attach -t tunnel"
+    echo "   или: cat /tmp/llm_logs/${MODEL}-tunnel.log"
 else
     echo "🌐 Локальный URL:"
     echo "   http://localhost:$PORT/docs"
@@ -307,5 +369,6 @@ echo "💡 Полезные команды:"
 echo "   • Остановить:        bash /workspace/stop.sh"
 echo "   • Посмотреть логи:   tmux attach -t model"
 echo "   • Получить URL:      cat /tmp/llm_logs/${MODEL}-tunnel.log | grep https"
+echo "   • Диагностика:       bash /workspace/check_tunnel.sh $MODEL"
 echo ""
 
