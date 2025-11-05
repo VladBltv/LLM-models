@@ -331,6 +331,18 @@ elif [ "$MODEL" = "deepseek" ]; then
     echo "🔧 Параметры для DeepSeek-R1-Qwen3-8B:"
     echo "   MAX_MODEL_LEN=$MAX_MODEL_LEN"
     echo "   GPU_MEMORY_UTILIZATION=$GPU_MEMORY_UTILIZATION"
+    echo ""
+    echo "📦 Проверка и обновление transformers для поддержки qwen3..."
+    CURRENT_VERSION=$(pip show transformers 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "неизвестна")
+    echo "   Текущая версия transformers: $CURRENT_VERSION"
+    echo "   Обновление до последней версии..."
+    pip install --upgrade "transformers>=4.40.0" --no-cache-dir 2>&1 | grep -E "(Successfully|Already|ERROR)" || true
+    NEW_VERSION=$(pip show transformers 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "неизвестна")
+    echo "   Новая версия transformers: $NEW_VERSION"
+    echo ""
+    echo "📦 Проверка vLLM (может потребоваться обновление)..."
+    pip install --upgrade vllm --no-cache-dir 2>&1 | grep -E "(Successfully|Already|ERROR)" || true
+    echo "✅ Зависимости проверены"
 fi
 
 # Запускаем через tmux с логированием (без буферизации Python)
@@ -1052,6 +1064,18 @@ elif [ "$MODEL" = "deepseek" ]; then
     echo "🔧 Параметры для DeepSeek-R1-Qwen3-8B:"
     echo "   MAX_MODEL_LEN=$MAX_MODEL_LEN"
     echo "   GPU_MEMORY_UTILIZATION=$GPU_MEMORY_UTILIZATION"
+    echo ""
+    echo "📦 Проверка и обновление transformers для поддержки qwen3..."
+    CURRENT_VERSION=$(pip show transformers 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "неизвестна")
+    echo "   Текущая версия transformers: $CURRENT_VERSION"
+    echo "   Обновление до последней версии..."
+    pip install --upgrade "transformers>=4.40.0" --no-cache-dir 2>&1 | grep -E "(Successfully|Already|ERROR)" || true
+    NEW_VERSION=$(pip show transformers 2>/dev/null | grep "^Version:" | awk '{print $2}' || echo "неизвестна")
+    echo "   Новая версия transformers: $NEW_VERSION"
+    echo ""
+    echo "📦 Проверка vLLM (может потребоваться обновление)..."
+    pip install --upgrade vllm --no-cache-dir 2>&1 | grep -E "(Successfully|Already|ERROR)" || true
+    echo "✅ Зависимости проверены"
 fi
 
 # Запускаем через tmux с логированием (без буферизации Python)
