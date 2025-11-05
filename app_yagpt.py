@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import uvicorn
+import os
 
 
 MODEL_NAME = "yandex/YandexGPT-5-Lite-8B-instruct"
@@ -45,4 +46,6 @@ def generate_yagpt(request: GenerateRequest):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8081)
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8081"))
+    uvicorn.run(app, host=host, port=port)

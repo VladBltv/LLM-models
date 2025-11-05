@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 import uvicorn
+import os
 
 
 MODEL_NAME = "Vikhrmodels/Vikhr-Nemo-12B-Instruct-R-21-09-24"
@@ -43,4 +44,6 @@ def generate_vikhr(request: GenerateRequest):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8082)
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8082"))
+    uvicorn.run(app, host=host, port=port)

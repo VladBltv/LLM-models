@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 from vllm import LLM, SamplingParams
 import uvicorn
+import os
 
 
 MODEL_NAME = "t-tech/T-lite-it-1.0"
@@ -62,4 +63,6 @@ async def generate_tlite(request: GenerateRequest):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8083)
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8083"))
+    uvicorn.run(app, host=host, port=port)

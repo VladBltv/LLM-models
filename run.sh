@@ -157,8 +157,8 @@ LOG_FILE="/tmp/llm_logs/${MODEL}.log"
 export HF_HUB_ENABLE_HF_TRANSFER=0
 
 # Запускаем через tmux с логированием (без буферизации Python)
-echo "🔧 Команда: python -u $SCRIPT"
-tmux new -s model -d "cd $PROJECT_DIR && export HF_HUB_ENABLE_HF_TRANSFER=0 && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
+echo "🔧 Команда: HOST=0.0.0.0 PORT=$PORT python -u $SCRIPT"
+tmux new -s model -d "cd $PROJECT_DIR && export HF_HUB_ENABLE_HF_TRANSFER=0 && export HOST=0.0.0.0 && export PORT=$PORT && python -u $SCRIPT 2>&1 | tee $LOG_FILE"
 sleep 3
 
 # Проверяем что tmux сессия запустилась
