@@ -174,7 +174,25 @@ PREV_LINE_COUNT=0
 echo "📊 Прогресс загрузки:"
 echo ""
 
-while ! curl -s http://localhost:$PORT/docs >/dev/null 2>&1; do
+MAX_WAIT_ITERATIONS=300  # 10 минут максимум (300 * 2 сек)
+WAIT_COUNTER=0
+SERVER_READY=0
+
+while [ $WAIT_COUNTER -lt $MAX_WAIT_ITERATIONS ]; do
+    # Проверяем доступность сервера
+    if curl -s --max-time 5 http://localhost:$PORT/docs >/dev/null 2>&1; then
+        SERVER_READY=1
+        break
+    fi
+    
+    # Проверяем что процесс еще жив
+    if ! tmux has-session -t model 2>/dev/null; then
+        echo ""
+        echo "❌ Сессия tmux 'model' завершилась!"
+        echo "💡 Проверь логи: cat $LOG_FILE"
+        exit 1
+    fi
+    
     # Проверяем что файл существует
     if [ -f "$LOG_FILE" ]; then
         CURRENT_LINE_COUNT=$(wc -l < "$LOG_FILE" 2>/dev/null || echo "0")
@@ -196,11 +214,26 @@ while ! curl -s http://localhost:$PORT/docs >/dev/null 2>&1; do
         echo "   ⏳ Ожидание запуска скрипта..."
     fi
     
+    WAIT_COUNTER=$((WAIT_COUNTER + 1))
     sleep 2
 done
 
-echo ""
-echo "✅ Модель готова!"
+if [ $SERVER_READY -eq 0 ]; then
+    echo ""
+    echo "⚠️  Сервер не запустился за 10 минут"
+    echo "💡 Проверь логи: cat $LOG_FILE"
+    echo "💡 Или: tmux attach -t model"
+    echo ""
+    echo "💡 Продолжаю запуск туннеля, но сервер может быть не готов"
+fi
+
+if [ $SERVER_READY -eq 1 ]; then
+    echo ""
+    echo "✅ Модель готова!"
+else
+    echo ""
+    echo "⚠️  Модель может быть не готова, но продолжаю..."
+fi
 
 # Запускаем туннель в фоне
 echo "🌐 Создание URL..."
@@ -209,10 +242,21 @@ tmux new -s tunnel -d "cloudflared tunnel --url http://localhost:$PORT 2>&1 | te
 
 # Ждём URL (до 60 секунд)
 echo "⏳ Ожидание Cloudflare туннеля..."
+sleep 3  # Даём cloudflared время на запуск
+
 URL=""
 COUNTER=0
-while [ -z "$URL" ] && [ $COUNTER -lt 30 ]; do
-    sleep 2
+MAX_TUNNEL_WAIT=30  # 60 секунд максимум
+
+while [ -z "$URL" ] && [ $COUNTER -lt $MAX_TUNNEL_WAIT ]; do
+    # Проверяем что туннель еще запущен
+    if ! tmux has-session -t tunnel 2>/dev/null; then
+        echo ""
+        echo "⚠️  Сессия туннеля завершилась!"
+        echo "💡 Проверь логи: cat /tmp/llm_logs/${MODEL}-tunnel.log"
+        break
+    fi
+    
     # Пробуем получить из tmux
     URL=$(tmux capture-pane -t tunnel -p 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1)
     
@@ -225,6 +269,7 @@ while [ -z "$URL" ] && [ $COUNTER -lt 30 ]; do
         echo -n "."
     fi
     COUNTER=$((COUNTER + 1))
+    sleep 2
 done
 echo ""
 
