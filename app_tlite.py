@@ -23,6 +23,8 @@ app = FastAPI(title="T-lite-it-1.0 API")
 class GenerateRequest(BaseModel):
     prompt: str
     temperature: float = 0.3
+    top_p: 0.8
+    top_k: 70
 
 
 @app.post("/generate_tlite")
@@ -40,8 +42,8 @@ async def generate_tlite(request: GenerateRequest):
     sampling_params = SamplingParams(
         temperature=request.temperature,
         repetition_penalty=1.05,
-        top_p=0.8,
-        top_k=70,
+        top_p=request.top_p,
+        top_k=request.top_k,
         max_tokens=5024,
         )
 
