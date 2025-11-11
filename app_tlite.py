@@ -24,7 +24,7 @@ class GenerateRequest(BaseModel):
     prompt: str
     temperature: float = 0.3
     top_p: float = 0.8
-    top_k: float = 70.0
+    top_k: int = 70
 
 
 @app.post("/generate_tlite")
