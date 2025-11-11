@@ -45,7 +45,7 @@ app = FastAPI(title="YandexGPT-8B-Lite-Instruct service")
 
 class GenerateRequest(BaseModel):
     prompt: str
-    temperature: float = 0.3
+    temperature: float = 0.4
 
 
 @app.post("/generate_yagpt")
@@ -58,7 +58,7 @@ def generate_yagpt(request: GenerateRequest):
 
     sampling_params = SamplingParams(
         temperature=request.temperature,
-        top_p=0.9,
+        top_p=0.7,
         max_tokens=1024,
     )
 
