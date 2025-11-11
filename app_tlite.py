@@ -23,8 +23,8 @@ app = FastAPI(title="T-lite-it-1.0 API")
 class GenerateRequest(BaseModel):
     prompt: str
     temperature: float = 0.3
-    top_p: 0.8
-    top_k: 70
+    top_p: float = 0.8
+    top_k: float = 70.0
 
 
 @app.post("/generate_tlite")
