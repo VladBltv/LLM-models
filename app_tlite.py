@@ -44,7 +44,7 @@ async def generate_tlite(request: GenerateRequest):
         repetition_penalty=1.05,
         top_p=request.top_p,
         top_k=request.top_k,
-        max_tokens=5024,
+        max_tokens=2048,
         )
 
 
